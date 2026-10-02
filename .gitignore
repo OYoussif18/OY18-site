@@ -1,0 +1,18 @@
+# Dependencies
+# None. This is a static site: no npm install required.
+#
+# (The dev tools below use only Node's standard library and a local Chromium.)
+
+# ── OS cruft ────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# ── Verification output ─────────────────────────────────────────────────────
+/shots/
+*.log
+
+# ── Nothing else is generated; everything here is source. ───────────────────
