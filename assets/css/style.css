@@ -161,9 +161,11 @@ ul, ol { list-style: none; }
                 border-color .32s var(--ease), background-color .32s var(--ease);
   }
   .cursor__dot {
-    width: 4px; height: 4px;
+    /* Deliberately small. The ring carries the hover state; the dot is a
+       precise point of reference, not a second target. */
+    width: 3px; height: 3px;
     background: #fff;
-    transition: opacity .25s var(--ease), transform .25s var(--ease);
+    transition: opacity .2s var(--ease), transform .2s var(--ease);
   }
   .cursor__label {
     position: absolute; top: 0; left: 0;
@@ -232,7 +234,9 @@ ul, ol { list-style: none; }
   margin-bottom: 20px;
   user-select: none;
 }
-.rail__brand span { transition: color .3s var(--ease), transform .3s var(--ease); }
+.rail__brand span {
+  transition: color .2s var(--ease), transform .2s var(--ease);
+}
 .rail__brand:hover span:nth-child(1) { color: var(--ink); transform: translateX(1px); }
 .rail__brand:hover span:nth-child(2) { color: var(--ink); transform: translateX(1px); }
 .rail__brand:hover span:nth-child(3) { color: var(--accent); transform: translateX(1px); }
@@ -267,7 +271,7 @@ ul, ol { list-style: none; }
   position: relative;
   display: flex; align-items: center; justify-content: center;
   height: 40px;
-  transition: color .3s var(--ease);
+  transition: color .2s var(--ease);
   color: var(--ink-3);
 }
 .rail__nav a:hover { color: var(--ink-2); }
@@ -479,7 +483,9 @@ main { position: relative; z-index: 1; }
 }
 
 .hero__name {
-  font-size: clamp(66px, 15.5vw, 208px);
+  /* Proportion only: the wordmark still dominates the hero, but it now sits
+     inside the frame with air around it instead of pressing the edges. */
+  font-size: clamp(58px, 12.2vw, 166px);
   font-weight: 500;
   line-height: .84;
   letter-spacing: -.055em;
@@ -489,9 +495,19 @@ main { position: relative; z-index: 1; }
 }
 /* The sheen is painted on the WHOLE wordmark, not per glyph. Applying it to
    each .ch gives every character its own gradient box, which clips tall
-   glyphs and leaves the last letters looking faded or missing. */
+   glyphs and leaves the last letters looking faded or missing.
+
+   Stops are warm neutrals (R > G > B) rather than the previous cool greys,
+   so the type sits on the same warm near-black as the rest of the page and
+   picks up a trace of the amber accent in its highlights. The top stop is a
+   soft off-white, never #fff, so it reads as premium rather than blown out. */
 .hero__name {
-  background: linear-gradient(177deg, #ffffff 6%, #c6c6cc 46%, #8e8e99 78%, #6e6e79 100%);
+  background: linear-gradient(177deg,
+    #f0ebe3 4%,
+    #d9d3ca 34%,
+    #b3aca2 62%,
+    #8b847b 86%,
+    #6e6862 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -501,18 +517,26 @@ main { position: relative; z-index: 1; }
   will-change: transform, opacity;
 }
 /* The blinking caret — sits after the name, part of the identity.
-   Needs an explicit background: the wordmark clips its text colour. */
+   Needs an explicit background: the wordmark clips its text colour.
+   The blink eases rather than stepping: `steps(1)` made it snap between
+   fully lit and fully dark, which read as broken rather than as a status
+   light. Opacity never reaches 0, so the caret always reads as present. */
 .hero__caret {
   display: inline-block;
-  width: .052em; height: .58em;
-  margin: .11em 0 0 .1em;
+  width: .052em; height: .75em;
+  margin: .05em 0 0 .1em;
   background: var(--accent);
   -webkit-background-clip: border-box; background-clip: border-box;
   box-shadow: 0 0 22px rgba(255, 174, 46, .5);
-  animation: blink 1.25s steps(1) infinite;
+  animation: blink 1.9s var(--ease-io) infinite;
   align-self: flex-start;
 }
-@keyframes blink { 0%, 48% { opacity: 1; } 49%, 100% { opacity: 0; } }
+@keyframes blink {
+  0%, 42%   { opacity: 1; }
+  62%       { opacity: 0; }
+  74%       { opacity: .92; }
+  88%      { opacity: 0; }
+}
 
 .hero__tagline {
   margin-top: clamp(24px, 3.6vh, 38px);
@@ -547,13 +571,18 @@ main { position: relative; z-index: 1; }
   will-change: transform;
 }
 .btn--solid { background: var(--ink); color: #0a0a0c; font-weight: 500; }
+/* The fill is contained by the button's own border-box: `inset: 0` plus the
+   `overflow: hidden` already on .btn means it can never spill past the pill.
+   The amber fill sits behind the button text using a negative z-index inside
+   the isolated stacking context, so the text remains visible during hover. */
+.btn--solid { isolation: isolate; }
 .btn--solid::before {
   content: ""; position: absolute; inset: 0;
+  z-index: -1;
   background: var(--accent);
   transform: translateY(101%);
   transition: transform .45s var(--ease);
 }
-.btn--solid > * , .btn--solid { position: relative; }
 .btn--solid:hover { color: #17120a; }
 .btn--solid:hover::before { transform: translateY(0); }
 .btn--ghost { border-color: var(--line-2); color: var(--ink-2); }
@@ -645,7 +674,7 @@ main { position: relative; z-index: 1; }
 .stack__num {
   font: 400 10px/1.4 var(--mono); letter-spacing: .12em;
   color: var(--ink-4);
-  transition: color .4s var(--ease);
+  transition: color .2s var(--ease);
 }
 .stack__row:hover .stack__num { color: var(--accent); }
 
@@ -653,7 +682,7 @@ main { position: relative; z-index: 1; }
   font-size: clamp(23px, 3.1vw, 34px);
   font-weight: 400; letter-spacing: -.03em; line-height: 1.1;
   color: var(--ink);
-  transition: color .4s var(--ease);
+  transition: color .2s var(--ease);
 }
 .stack__row:hover .stack__name { color: var(--ink); }
 
@@ -662,7 +691,7 @@ main { position: relative; z-index: 1; }
   font-size: clamp(14px, 1.05vw, 15.5px);
   line-height: 1.58; color: var(--ink-3);
   max-width: 52ch;
-  transition: color .4s var(--ease);
+  transition: color .2s var(--ease);
 }
 .stack__row:hover .stack__desc { color: var(--ink-2); }
 @media (min-width: 860px) { .stack__desc { grid-column: 3; grid-row: 1; } }
@@ -670,8 +699,8 @@ main { position: relative; z-index: 1; }
 .stack__glyph { display: none; }
 @media (min-width: 860px) { .stack__glyph { display: block; grid-column: 4; grid-row: 1; justify-self: end; } }
 .stack__glyph svg { width: 46px; height: 46px; overflow: visible; }
-.stack__glyph [data-s] { fill: none; stroke: var(--ink-4); stroke-width: 1.1; transition: stroke .45s var(--ease); }
-.stack__glyph [data-f] { fill: var(--ink-4); transition: fill .45s var(--ease); }
+.stack__glyph [data-s] { fill: none; stroke: var(--ink-4); stroke-width: 1.1; transition: stroke .22s var(--ease); }
+.stack__glyph [data-f] { fill: var(--ink-4); transition: fill .22s var(--ease); }
 .stack__row:hover .stack__glyph [data-s] { stroke: var(--accent); }
 .stack__row:hover .stack__glyph [data-f] { fill: var(--accent); }
 
@@ -734,7 +763,7 @@ main { position: relative; z-index: 1; }
   border-radius: 100px;
   font: 400 11px/1 var(--mono); letter-spacing: .06em;
   color: var(--ink-3);
-  transition: color .3s var(--ease), border-color .3s var(--ease), background-color .3s var(--ease);
+  transition: color .2s var(--ease), border-color .2s var(--ease), background-color .2s var(--ease);
 }
 .tgl:hover { color: var(--ink-2); border-color: var(--line-3); }
 .tgl[aria-pressed="true"] {
@@ -748,10 +777,17 @@ main { position: relative; z-index: 1; }
 .now__item {
   padding: clamp(20px, 2.5vw, 28px) 0;
   border-bottom: 1px solid var(--line);
-  transition: opacity .5s var(--ease), transform .5s var(--ease);
+  /* Reflow states. `.is-out` is the existing exit; `.is-enter` is the new
+     arrival state, used only when a filter brings an item back or the list
+     first composes. Both share one timing so items never disagree. */
+  transition: opacity .42s var(--ease), transform .42s var(--ease);
 }
 .now__item[hidden] { display: none; }
 .now__item.is-out { opacity: 0; transform: translateY(6px); }
+/* Arrival: sits 4px low and transparent until the frame flips it in.
+   The transform is removed on the next frame so the CSS transition — not
+   this initial state — performs the movement. */
+.now__item.is-enter { opacity: 0; transform: translateY(4px); }
 .now__tag {
   display: inline-flex; align-items: center; gap: 7px;
   font: 500 9.5px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase;
@@ -853,96 +889,155 @@ main { position: relative; z-index: 1; }
 .tag--closed { color: var(--ink-3); background: rgba(255,255,255,.04); border: 1px solid var(--line-2); }
 
 /* ═══ 05 · Ports ════════════════════════════════════════════ */
-.ports { border-top: 1px solid var(--line); }
+
+.ports {
+  margin-top: clamp(48px, 7vw, 84px);
+}
+
 .port {
   position: relative;
-  display: grid;
-  gap: 4px 20px;
-  padding: clamp(24px, 3.2vw, 36px) 0;
+  padding: clamp(28px, 3.8vw, 44px) 0;
   border-bottom: 1px solid var(--line);
-  transition: padding-left .55s var(--ease);
+  transition:
+    padding-left .25s var(--ease),
+    border-color .25s var(--ease);
 }
+
+.port:last-child {
+  border-bottom: 0;
+}
+
+.port:hover {
+  padding-left: 12px;
+  border-color: rgba(255, 174, 46, .22);
+}
+
+.port__link {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+.port__link:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 8px;
+}
+
 @media (min-width: 860px) {
-  .port {
-    grid-template-columns: 44px minmax(0,1fr) minmax(0,1.05fr) 40px;
-    grid-template-areas: "num name desc arrow" "num val desc arrow";
-    align-items: center; column-gap: 24px;
+  .port__link {
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1.05fr) 40px;
+    grid-template-areas:
+      "num name desc arrow"
+      "num val  desc arrow";
+    align-items: center;
+    column-gap: 24px;
   }
-  .port__num  { grid-area: num; }
-  .port__name { grid-area: name; }
-  .port__val  { grid-area: val; }
-  .port__desc { grid-area: desc; }
-  .port__arrow{ grid-area: arrow; justify-self: end; }
+
+  .port__num   { grid-area: num; }
+  .port__name  { grid-area: name; }
+  .port__val   { grid-area: val; }
+  .port__desc  { grid-area: desc; }
+  .port__arrow { grid-area: arrow; justify-self: end; }
 }
-.port:hover { padding-left: 14px; }
-.port__line { display: none; }
-@media (max-width: 859px) {
-  .port__line { display: block; position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: var(--accent); opacity: 0; transition: opacity .5s var(--ease); }
-  .port:hover .port__line { opacity: 1; }
+
+/* index */
+
+.port__num {
+  font: 400 10px/1 var(--mono);
+  letter-spacing: .12em;
+  color: var(--ink-4);
+  transition: color .22s var(--ease);
 }
-.port__num { font: 400 10px/1 var(--mono); letter-spacing: .12em; color: var(--ink-4); }
+
+.port:hover .port__num {
+  color: var(--accent);
+}
+
+/* title */
+
 .port__name {
-  font-size: clamp(26px, 3.4vw, 40px); font-weight: 400; letter-spacing: -.035em; line-height: 1.08;
-  transition: color .45s var(--ease);
+  font-size: clamp(26px, 3.4vw, 40px);
+  font-weight: 400;
+  letter-spacing: -.035em;
+  line-height: 1.08;
+  transition: color .22s var(--ease);
 }
-.port:hover .port__name { color: var(--accent); }
-.port__desc { font-size: 14.5px; line-height: 1.55; color: var(--ink-3); max-width: 40ch; }
+
+.port:hover .port__name {
+  color: var(--accent);
+}
+
+/* description */
+
+.port__desc {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-3);
+  max-width: 40ch;
+}
+
+/* handle / address */
+
 .port__val {
-  font: 400 12px/1.5 var(--mono); letter-spacing: .04em;
+  margin-top: 3px;
+  font: 400 12px/1.5 var(--mono);
+  letter-spacing: .04em;
   color: var(--ink-2);
-  margin-top: 2px;
 }
-.port__val i { font-style: normal; color: var(--ink-4); }
-[data-placeholder] { position: relative; display: inline-flex; }
-[data-placeholder]::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: -3px; height: 1px;
-  background: repeating-linear-gradient(to right, var(--ink-4) 0 3px, transparent 3px 6px);
-  opacity: .8;
-}
+
+/* arrow */
+
 .port__arrow {
-  font-size: 17px; color: var(--ink-4);
-  transition: transform .45s var(--ease), color .45s var(--ease);
+  font-size: 18px;
+  color: var(--ink-4);
+  transition:
+    transform .22s var(--ease),
+    color .22s var(--ease);
 }
-.port:hover .port__arrow { transform: translateX(6px); color: var(--accent); }
+
+.port:hover .port__arrow {
+  transform: translate(4px, -4px);
+  color: var(--accent);
+}
+
 
 /* colophon */
+
 .colophon {
   margin-top: clamp(56px, 8vw, 100px);
   padding-top: 26px;
   border-top: 1px solid var(--line);
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
 }
+
 .colophon__mark {
-  font: 500 13px/1 var(--mono); letter-spacing: .3em; color: var(--ink-4);
+  font: 500 13px/1 var(--mono);
+  letter-spacing: .3em;
+  color: var(--ink-4);
 }
-.colophon__line { font: 400 11px/1.5 var(--mono); letter-spacing: .06em; color: var(--ink-4); }
+
+.colophon__line {
+  font: 400 11px/1.5 var(--mono);
+  letter-spacing: .06em;
+  color: var(--ink-4);
+}
+
 .colophon__top {
-  font: 400 11px/1 var(--mono); letter-spacing: .1em; color: var(--ink-3);
-  transition: color .3s var(--ease);
+  font: 400 11px/1 var(--mono);
+  letter-spacing: .1em;
+  color: var(--ink-3);
+  transition: color .22s var(--ease);
 }
-.colophon__top:hover { color: var(--accent); }
 
-/* ── End-state resolve canvas ───────────────────────────────────
-   Lives INSIDE the contact section as its last child, so it can never
-   overlay an earlier chapter. The section reserves room for it below
-   the colophon — the clusters read as a deliberate closing image,
-   not a glow bleeding through the text. */
-.sec--contact { position: relative; overflow: hidden; }
-.sec--contact > .wrap { position: relative; z-index: 1; }
-.sec--contact { padding-bottom: 0; }
-.sec--contact .wrap { padding-bottom: clamp(48px, 6vw, 76px); }
-.resolve {
-  position: relative;          /* in flow: reserves its own space */
-  width: 100%;
-  height: clamp(180px, 26vh, 300px);
-  margin-bottom: -2px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 1.2s var(--ease);
+.colophon__top:hover {
+  color: var(--accent);
 }
-.resolve.is-in { opacity: 1; }
-.resolve canvas { width: 100%; height: 100%; }
-
 /* ── Entrance ───────────────────────────────────────────────── */
 [data-reveal] {
   opacity: 0; transform: translateY(14px);
@@ -960,21 +1055,6 @@ main { position: relative; z-index: 1; }
   transition-delay: calc(var(--i) * 62ms + 90ms);
 }
 .hero__name .ch.is-in { opacity: 1; transform: translateY(0) rotateX(0); }
-
-/* ── Reduced motion ────────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after {
-    animation-duration: .001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .001ms !important;
-  }
-  [data-reveal], .hero__name .ch { opacity: 1 !important; transform: none !important; }
-  .hero__caret { animation: none; opacity: 1; }
-  .plot__line { stroke-dashoffset: 0 !important; }
-  .plot__area { opacity: 1 !important; }
-  .resolve { opacity: 1; }
-}
 
 /* ═══ Responsive refinements ═══════════════════════════════ */
 @media (max-width: 640px) {

@@ -265,16 +265,71 @@ const Rail = (() => {
   const btns  = $$('[data-now-filter]');
   if (!items.length) return;
 
+  /* Arrival reveal.
+     An item is parked in `.is-enter` (4px low, transparent), unhidden, then
+     released on the next frame so the CSS transition performs the movement.
+     The stagger is small — 34ms, capped — so a five-item list resolves in
+     about 140ms total: enough to read as a system reorganising, not enough
+     to feel like a slideshow. */
+  const REVEAL_MS = 340, STAGGER_MS = 34;
+
+  function revealIn(el, order) {
+    el.hidden = false;
+    el.classList.remove('is-out');
+    el.classList.add('is-enter');
+    // Force a style flush so the browser records the parked position before
+    // we release it; without this the transition has no start value to run from.
+    void el.offsetHeight;
+    requestAnimationFrame(() => {
+      setTimeout(() => el.classList.remove('is-enter'), order * STAGGER_MS);
+    });
+  }
+
+  /* The list composes itself once when it first enters view. Items already
+     visible at load are left alone so there is no flash on a deep link. */
+  let composed = false;
+  const composeIO = new IntersectionObserver((es) => {
+    if (!es.some(e => e.isIntersecting) || composed) return;
+    composed = true;
+    composeIO.disconnect();
+    items.forEach((it, i) => {
+      if (it.hidden) return;
+      revealIn(it, i);
+    });
+  }, { threshold: 0.2 });
+  composeIO.observe(items[0].closest('.now__list') || items[0]);
+
   btns.forEach(btn => btn.addEventListener('click', () => {
     const want = btn.dataset.nowFilter;
     btns.forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
-    items.forEach((it, i) => {
+    // Mark the change as user-driven so the composition pass never re-runs.
+    composed = true;
+
+    // Cancel any in-flight reveal so a rapid second click cannot leave an
+    // item stranded in `.is-enter` (invisible) after the new filter applies.
+    items.forEach(it => {
+      if (it._revealT) { clearTimeout(it._revealT); it._revealT = 0; }
+      it.classList.remove('is-enter');
+    });
+
+    let order = 0;
+    items.forEach((it) => {
       const show = want === 'all' || it.dataset.cat === want;
       if (show) {
-        setTimeout(() => { it.hidden = false; requestAnimationFrame(() => it.classList.remove('is-out')); }, i * 40);
+        if (it.hidden) {
+          const mine = order++;
+          it._revealT = setTimeout(() => {
+            revealIn(it, 0);
+            it._revealT = 0;
+          }, mine * STAGGER_MS);
+        } else {
+          // Already on screen: settle it without re-animating.
+          it.classList.remove('is-out');
+        }
       } else {
+        it.classList.remove('is-enter');
         it.classList.add('is-out');
-        setTimeout(() => { it.hidden = true; }, 260);
+        setTimeout(() => { it.hidden = true; }, REVEAL_MS);
       }
     });
   }));
@@ -611,107 +666,169 @@ const Rail = (() => {
   Ticker.add(frame);
 })();
 
-/* ═══════════ 10 · Ending: the lattice resolves into three ports ═
-   The same visual language as the hero, mid-collapse: edges thin out
-   and the remaining nodes settle onto three anchors.                 */
+/* ═══════════ 10 · Closing state ════════════════════════════
+   The old footer resolved the lattice as a free-floating field: nodes
+   drifted toward three anchors and kept drifting, with nothing for the
+   viewer to do. That read as "neurons moving around", and the band it
+   occupied was the dead space under the colophon.
+
+   This is the same visual language in its terminal form. On arrival the
+   three clusters assemble once and then STOP — the graph has finished, so
+   there is nothing left to explore. The only live behaviour is a proximity
+   response to the pointer: nodes near the cursor brighten, which reads as
+   the system acknowledging you have arrived rather than asking you to play.
+
+   Deliberately unlike the hero: no orbiting, no rewiring, no field to steer,
+   and it costs one draw pass per frame instead of an all-pairs search. */
 (() => {
-  const wrap = $('[data-resolve]');
-  const cv   = $('[data-resolve-canvas]');
+  const wrap = $('[data-closing]');
+  const cv   = $('[data-closing-canvas]');
   if (!wrap || !cv) return;
   const ctx = cv.getContext('2d', { alpha: true });
   if (!ctx) return;
 
-  let W = 0, H = 0, nodes = [], p = 0, raf = 0, io;
+  let W = 0, H = 0, nodes = [], raf = 0, io, assemble = 0;
+  let visible = false, ptr = { x: -9999, y: -9999, on: false };
+
+  const ASSEMBLE_MS = 1100;   // one-time arrival
 
   function resize() {
     const r = wrap.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return;
     const dpr = Math.min(devicePixelRatio || 1, 2);
-    W = Math.max(1, r.width); H = Math.max(1, r.height);
+    W = r.width; H = r.height;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    /* Three clusters, one per contact port, each sitting under its column.
-       The closing image is a settled graph — not a field of loose dots. */
-    const count = clamp(Math.round(W / 34), 30, 78);
-    const anchors = [0.2, 0.5, 0.8].map(f => ({ x: W * f, y: H * rand(0.4, 0.6) }));
+    /* Three clusters aligned to the three port rows, each one already in
+       its final place. Node count is small on purpose — this is a mark,
+       not a field. */
+    const perCluster = clamp(Math.round(W / 90), 5, 11);
+    const centres = [0.2, 0.5, 0.8].map(f => W * f);
     nodes = [];
-    for (let i = 0; i < count; i++) {
-      const a = anchors[i % 3];
-      nodes.push({
-        // scatter → then converge to the nearest anchor
-        x: rand(0, W), y: rand(H * 0.1, H),
-        tx: a.x + rand(-W * 0.028, W * 0.028), ty: a.y + rand(-H * 0.17, H * 0.17),
-        ph: rand(0, 6.28), anchor: i % 3
-      });
-    }
+    centres.forEach((cx, ci) => {
+      for (let i = 0; i < perCluster; i++) {
+        // deterministic, tightly grouped: a settled cluster, not a scatter
+        const a = (i / perCluster) * Math.PI * 2 + ci * 0.6;
+        const rad = (i === 0) ? 0 : (0.34 + (i % 3) * 0.16) * Math.min(W, H) * 0.5;
+        const tx = cx + Math.cos(a) * rad;
+        const ty = H / 2 + Math.sin(a) * rad * 0.52;
+        nodes.push({
+          x: W * 0.5 + (Math.random() - 0.5) * W,   // converges on arrival
+          y: H * (0.3 + Math.random() * 0.4),
+          tx, ty, hot: 0, isCore: i === 0
+        });
+      }
+    });
+    assemble = 0;
   }
 
-  function draw() {
-    p = clamp(p + 0.016, 0, 1);
-    const e = 1 - Math.pow(1 - p, 3);       // easeOutCubic
+  function draw(now) {
+    if (assemble < 1) assemble = clamp((now - t0) / ASSEMBLE_MS, 0, 1);
+    // easeOutCubic: the clusters arrive quickly then settle without bounce
+    const e = 1 - Math.pow(1 - assemble, 3);
+
     ctx.clearRect(0, 0, W, H);
 
     for (const n of nodes) {
-      n.x = lerp(n.x, n.tx, 0.012 + e * 0.02);
-      n.y = lerp(n.y, n.ty, 0.012 + e * 0.02);
+      n.x = lerp(n.x, n.tx, 0.055 + e * 0.06);
+      n.y = lerp(n.y, n.ty, 0.055 + e * 0.06);
+
+      // proximity only: a local lift, no attraction or repulsion
+      if (ptr.on) {
+        const dx = n.x - ptr.x, dy = n.y - ptr.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < 130 * 130) n.hot = 1 - Math.sqrt(d2) / 130;
+      } else {
+        n.hot *= 0.9;
+      }
+      n.hot = clamp(n.hot, 0, 1);
     }
 
-    const reach = lerp(150, 78, e);
+    // A single hairline rule tying the three clusters together: the thread
+    // that ran through the whole site, closed.
+    ctx.strokeStyle = `rgba(${ACC_RGB[0]},${ACC_RGB[1]},${ACC_RGB[2]},${(0.16 * e).toFixed(3)})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.2, H / 2); ctx.lineTo(W * 0.8, H / 2);
+    ctx.stroke();
+
+    // Edges within each cluster only — the graph is closed, not drifting.
+    const reach = 62;
     for (let i = 0; i < nodes.length; i++) {
       const a = nodes[i];
       for (let j = i + 1; j < nodes.length; j++) {
         const b = nodes[j];
-        if (a.anchor !== b.anchor) continue;   // edges only within a cluster
+        if (Math.abs(a.x - b.x) > W * 0.22) continue;   // not the same cluster
         const dx = a.x - b.x, dy = a.y - b.y;
         const d2 = dx * dx + dy * dy;
         if (d2 > reach * reach) continue;
         const f = 1 - Math.sqrt(d2) / reach;
-        ctx.strokeStyle = `rgba(${ACC_RGB[0]},${ACC_RGB[1]},${ACC_RGB[2]},${(f * f * 0.2 * (0.3 + e * 0.7)).toFixed(3)})`;
-        ctx.lineWidth = 0.6;
+        const heat = Math.max(a.hot, b.hot);
+        ctx.strokeStyle = heat > 0.02
+          ? `rgba(${ACC_RGB[0]},${ACC_RGB[1]},${ACC_RGB[2]},${(f * (0.22 + heat * 0.5) * e).toFixed(3)})`
+          : `rgba(158,160,170,${(f * f * 0.22 * e).toFixed(3)})`;
+        ctx.lineWidth = 0.6 + heat * 0.5;
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
     }
 
     for (const n of nodes) {
-      const isCore = n.x > n.tx - 6 && n.y > n.ty - 6;
-      const pulse = REDUCED ? .8 : 0.72 + 0.28 * Math.sin(p * 22 + n.ph);
-      const r = (isCore ? 1.7 : 1.1) * pulse;
-      ctx.fillStyle = isCore
-        ? `rgba(${ACC_RGB[0]},${ACC_RGB[1]},${ACC_RGB[2]},${(0.5 + 0.4 * pulse * e).toFixed(3)})`
-        : `rgba(190,192,200,${(0.22 * (1 - e * 0.5)).toFixed(3)})`;
+      const r = (n.isCore ? 2.1 : 1.2) * (1 + n.hot * 0.5);
+      if (n.hot > 0.02) {
+        ctx.fillStyle = `rgba(${ACC_RGB[0]},${ACC_RGB[1]},${ACC_RGB[2]},${(0.55 + n.hot * 0.45).toFixed(3)})`;
+      } else {
+        ctx.fillStyle = n.isCore
+          ? `rgba(${ACC_RGB[0]},${ACC_RGB[1]},${ACC_RGB[2]},${(0.6 * e).toFixed(3)})`
+          : `rgba(180,182,190,${(0.34 * e).toFixed(3)})`;
+      }
       ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 6.2832); ctx.fill();
     }
 
-    // three anchor halos, blooming gently as the graph settles
-    const seen = new Set();
-    for (const n of nodes) {
-      if (seen.has(n.anchor)) continue;
-      seen.add(n.anchor);
-      const g = ctx.createRadialGradient(n.tx, n.ty, 0, n.tx, n.ty, 38);
-      g.addColorStop(0, `rgba(${ACC_RGB[0]},${ACC_RGB[1]},${ACC_RGB[2]},${(0.085 * e).toFixed(3)})`);
-      g.addColorStop(1, `rgba(${ACC_RGB[0]},${ACC_RGB[1]},${ACC_RGB[2]},0)`);
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(n.tx, n.ty, 38, 0, 6.2832); ctx.fill();
-    }
-
-    if (p < 1 || !REDUCED) raf = requestAnimationFrame(draw);
+    raf = requestAnimationFrame(draw);
   }
 
+  let t0 = 0;
   const start = () => {
-    if (io) io.disconnect();
+    if (raf) cancelAnimationFrame(raf);
     resize();
-    p = 0;
-    cancelAnimationFrame(raf);
+    if (!nodes.length) return;
+    t0 = performance.now();
     raf = requestAnimationFrame(draw);
   };
 
-  addEventListener('resize', () => { if (wrap.classList.contains('is-in')) start(); }, { passive: true });
+  /* Pointer, only while the closing state is on screen. */
+  const onMove = (e) => { ptr.x = e.clientX; ptr.y = e.clientY; ptr.on = true; };
+  addEventListener('pointermove', onMove, { passive: true });
+  addEventListener('pointerleave', () => { ptr.on = false; }, { passive: true });
 
-  if (REDUCED) { wrap.classList.add('is-in'); resize(); }
-  else {
+  // Stop entirely once scrolled away — nothing here needs to keep running.
+  new IntersectionObserver((es) => {
+    visible = es.some(e => e.isIntersecting);
+    if (!visible && raf) { cancelAnimationFrame(raf); raf = 0; }
+    else if (visible && !raf && wrap.classList.contains('is-in')) { t0 = performance.now(); raf = requestAnimationFrame(draw); }
+  }, { threshold: 0 }).observe(wrap);
+
+  addEventListener('resize', () => { if (wrap.classList.contains('is-in')) start(); }, { passive: true });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+    else if (visible && wrap.classList.contains('is-in') && !raf) { t0 = performance.now(); raf = requestAnimationFrame(draw); }
+  });
+
+  if (REDUCED) {
+    // Static final state: assemble instantly, draw once, no loop.
+    wrap.classList.add('is-in');
+    resize();
+    if (nodes.length) {
+      nodes.forEach(n => { n.x = n.tx; n.y = n.ty; n.hot = 0; });
+      assemble = 1; t0 = performance.now() - ASSEMBLE_MS;
+      draw(performance.now());
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    }
+  } else {
     io = new IntersectionObserver((es) => {
       if (es.some(e => e.isIntersecting)) { wrap.classList.add('is-in'); start(); io.disconnect(); }
-    }, { threshold: 0.1 });
+    }, { threshold: 0.15 });
     io.observe(wrap);
   }
 })();
@@ -725,7 +842,47 @@ const Rail = (() => {
   const hint = $('.hero__hint');
   if (hint && FINE) setTimeout(() => hint.classList.add('is-in'), 900);
 
-  // Smooth in-page nav, offset for the rail.
+  /* Smooth in-page navigation.
+     The native `scroll-behavior: smooth` on <html> was doing the scrolling
+     before and it lurched: the browser committed several hundred pixels in
+     a single frame before easing in, which reads as a jump followed by a
+     slide. An explicit rAF tween with a long-tailed ease gives full control
+     of the curve, so movement starts near zero velocity and settles gently.
+
+     Native behaviour is kept for browsers without scrollTo options and for
+     reduced-motion, where the destination is simply jumped to. */
+  const scrollEase = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2); // easeInOutCubic
+  let scrollRaf = 0;
+
+  function smoothScrollTo(top) {
+    const maxTop = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+    const dest = clamp(top, 0, maxTop);
+    const from = scrollY;
+    const delta = dest - from;
+
+    /* `behavior: 'instant'` is required, not cosmetic. The stylesheet keeps
+       `scroll-behavior: smooth` as a no-JS fallback, and a bare scrollTo()
+       would inherit it — so every tween frame would kick off its own smooth
+       animation and the two curves would fight each other. */
+    if (Math.abs(delta) < 2 || REDUCED) {
+      scrollTo({ top: dest, behavior: 'instant' });
+      return;
+    }
+
+    cancelAnimationFrame(scrollRaf);
+    // Duration scales with distance but stays inside a deliberate band, so a
+    // short hop stays snappy and a full-page jump is still readable.
+    const duration = clamp(340 + Math.abs(delta) * 0.16, 380, 900);
+    const start = performance.now();
+
+    const step = (now) => {
+      const t = clamp((now - start) / duration, 0, 1);
+      scrollTo({ top: from + delta * scrollEase(t), behavior: 'instant' });
+      if (t < 1) scrollRaf = requestAnimationFrame(step);
+    };
+    scrollRaf = requestAnimationFrame(step);
+  }
+
   document.addEventListener('click', (e) => {
     const a = e.target.closest?.('a[href^="#"]');
     if (!a) return;
@@ -734,11 +891,23 @@ const Rail = (() => {
     const el = document.getElementById(id.slice(1));
     if (!el) return;
     e.preventDefault();
+
+    // Fixed chrome: the depth rail on desktop. The mobile index is a sheet
+    // that closes itself, so it needs no offset.
     const railW = parseInt(CSS.getPropertyValue('--rail-w')) || 0;
     const off = innerWidth >= 1040 ? railW : 0;
-    scrollTo({ top: el.getBoundingClientRect().top + scrollY - off + 1, behavior: REDUCED ? 'auto' : 'smooth' });
+    smoothScrollTo(el.getBoundingClientRect().top + scrollY - off + 1);
+
     history.replaceState(null, '', id);
+    // Move focus for keyboard users without a second scroll jump.
+    el.setAttribute('tabindex', '-1');
+    el.focus({ preventScroll: true });
   });
+
+  // Any manual scroll input cancels the in-flight tween immediately.
+  ['wheel', 'touchstart', 'keydown'].forEach(ev =>
+    addEventListener(ev, () => cancelAnimationFrame(scrollRaf), { passive: true })
+  );
 
   // If the browser restored a scroll position, re-run the rail immediately.
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';

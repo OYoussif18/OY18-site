@@ -121,7 +121,7 @@
       </p>
 
       <div class="hero__actions" data-reveal data-reveal-delay="3">
-        <a class="btn btn--solid" href="#interests" data-cursor-label="Explore">Explore the interests</a>
+        <a class="btn btn--solid" href="#interests" data-cursor-label="Explore"><span>Explore the interests</span></a>
         <a class="btn btn--ghost" href="#contact" data-cursor-label="Open">Open ports</a>
       </div>
     </div>
@@ -382,37 +382,53 @@
     <div class="wrap">
       <header class="sechead sechead--center">
         <p class="sechead__idx" data-reveal><span>05</span><i aria-hidden="true"></i><span>Ports</span></p>
-        <h2 class="sechead__title sechead__title--xl" data-split>Three ways in</h2>
+        <h2 class="sechead__title sechead__title--xl" data-split>Four ways in</h2>
         <p class="sechead__note" data-reveal data-reveal-delay="1">
-          Placeholders below. Real handles get wired in when they are ready.
+          Real channels. Pick whichever makes sense.
         </p>
       </header>
 
       <ul class="ports" data-ports>
         <li class="port" data-port data-cursor-label="Open">
-          <span class="port__num">01</span>
-          <span class="port__line" aria-hidden="true"></span>
-          <h3 class="port__name">GitHub</h3>
-          <p class="port__desc">Repositories, half-finished experiments, and whatever survived the last rewrite.</p>
-          <p class="port__val"><span data-placeholder>github.com/<i>username</i></span></p>
-          <span class="port__arrow" aria-hidden="true">→</span>
+          <a class="port__link" href="https://github.com/OYoussif18" target="_blank" rel="noopener">~
+            <span class="port__num">01</span>
+            <h3 class="port__name">GitHub</h3>
+            <p class="port__desc">Repositories, half-finished experiments, and whatever survived the last rewrite.</p>
+            <p class="port__val">github.com/OYoussif18</p>
+            <span class="port__arrow" aria-hidden="true">↗</span>
+          </a>
         </li>
+
+        <li class="port" data-port data-cursor-label="Message">
+          <a class="port__link" href="https://wa.me/201150131350" target="_blank" rel="noopener">
+            <span class="port__num">02</span>
+            <h3 class="port__name">WhatsApp</h3>
+            <p class="port__desc">Direct messages, without the ceremony.</p>
+            <p class="port__val">wa.me/201150131350</p>
+            <span class="port__arrow" aria-hidden="true">↗</span>
+          </a>
+        </li>
+
         <li class="port" data-port data-cursor-label="Write">
-          <span class="port__num">02</span>
-          <span class="port__line" aria-hidden="true"></span>
-          <h3 class="port__name">Email</h3>
-          <p class="port__desc">For something considered worth the reply.</p>
-          <p class="port__val"><span data-placeholder><i>email address</i></span></p>
-          <span class="port__arrow" aria-hidden="true">→</span>
+          <a class="port__link" href="mailto:omarmyemam@gmail.com">
+            <span class="port__num">03</span>
+            <h3 class="port__name">Email</h3>
+            <p class="port__desc">For something considered worth the reply.</p>
+            <p class="port__val">omarmyemam@gmail.com</p>
+            <span class="port__arrow" aria-hidden="true">↗</span>
+          </a>
         </li>
+
         <li class="port" data-port data-cursor-label="Join">
-          <span class="port__num">03</span>
-          <span class="port__line" aria-hidden="true"></span>
-          <h3 class="port__name">Discord</h3>
-          <p class="port__desc">Faster than email, and easier to walk away from.</p>
-          <p class="port__val"><span data-placeholder><i>username</i></span></p>
-          <span class="port__arrow" aria-hidden="true">→</span>
+          <a class="port__link" href="https://discord.com/users/786656270554890240" target="_blank" rel="noopener">
+            <span class="port__num">04</span>
+            <h3 class="port__name">Discord</h3>
+            <p class="port__desc">Faster than email, and easier to walk away from.</p>
+            <p class="port__val">discord.com/users/786656270554890240</p>
+            <span class="port__arrow" aria-hidden="true">↗</span>
+          </a>
         </li>
+
       </ul>
 
       <footer class="colophon">
@@ -423,14 +439,7 @@
         <a class="colophon__top" href="#signal" data-cursor-label="Top">Back to the top ↑</a>
       </footer>
     </div>
-
-    <!-- Ambient end-state: the lattice resolves into three clusters, one per port.
-         Sits below the content, inside this section only. -->
-    <div class="resolve" data-resolve aria-hidden="true">
-      <canvas data-resolve-canvas></canvas>
-    </div>
   </section>
-
 </main>
 
 <script src="assets/js/main.js" defer></script>
