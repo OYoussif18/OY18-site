@@ -1,10 +1,13 @@
 # OY18
 
-A personal technology identity — not a résumé. Dark, minimal, and interactive,
-built as a single static page with no framework and no build step.
+A personal technology identity — not a résumé.
 
-```
-open index.html          # or: python3 -m http.server 8000
+Dark, minimal, and interactive, built as a single static page with no framework and no build step.
+
+```bash
+open index.html
+# or
+python3 -m http.server 8000
 ```
 
 There is nothing to install and nothing to compile. Serve the folder and it works.
@@ -13,103 +16,107 @@ There is nothing to install and nothing to compile. Serve the folder and it work
 
 ## The idea
 
-OY18 is treated as a handle on a system rather than a person. That single idea
-drives every visual decision:
+OY18 is treated as a handle on a system rather than a person. That idea drives the visual language of the site.
 
-| Element | Meaning |
-|---|---|
-| **Lattice** (hero) | A field of nodes that rewires itself. Your cursor is a field inside it — it pulls nearby nodes and energises the edges that tighten around it. |
-| **Depth rail** (left edge) | A vertical instrument scale that fills as you descend, with a live depth readout. Navigation as a measurement, not a menu. |
-| **Signal plot** | A self-reported trace of what is currently taking attention. Deliberately irregular — a smooth curve would imply data that does not exist. |
-| **ABC loop** (Basis) | Read → tear down → rebuild → put in a loop. The stance, expressed as a circuit. |
-| **Resolve** (ending) | The same lattice collapses into three settled clusters, one under each contact port. The open graph resolves into the ways in. |
+| Element         | Meaning                                                                         |
+| --------------- | ------------------------------------------------------------------------------- |
+| **Lattice**     | A reactive field of nodes that responds to the cursor.                          |
+| **Depth rail**  | A vertical instrument scale that fills as you move through the page.            |
+| **Signal plot** | A deliberately irregular trace representing what is currently taking attention. |
+| **ABC loop**    | Read → tear down → rebuild → put it in a loop.                                  |
+| **Ports**       | The open channels into the identity — GitHub, WhatsApp, Email, and Discord.     |
 
-One accent colour only: **signal amber `#FFAE2E`** on warm near-black. Chosen
-because it is not the blue/green/purple every technology site reaches for.
+One accent colour only: **signal amber `#FFAE2E`** on warm near-black.
 
 ---
 
 ## Structure
 
-```
-index.html                 semantic markup, all content inline
+```text
+index.html
 site.webmanifest
+robots.txt
+sitemap.xml
+
 assets/
-  css/style.css            one stylesheet, ~250 rules
-  js/main.js               one script, no dependencies
-  fonts/                   Geist + Geist Mono (self-hosted, latin subsets, 84 KB)
-  img/                     favicon, app icons, social preview
-verify.js                  screenshots every section at 4 widths
-test.js                    interaction tests (nav, filters, a11y, touch)
-perf.js                    frame-cost measurement under CPU throttling
+  css/style.css
+  js/main.js
+  fonts/
+  img/
 ```
 
-`verify.js`, `test.js` and `perf.js` drive the local Chromium over the DevTools
-Protocol and are development tools, not runtime dependencies. Delete them if you
-only want the site.
+The site has no framework, package manager, or build pipeline.
+
+The JavaScript handles the interactive systems: navigation, cursor behavior, lattice rendering, section reveals, filters, and other page interactions.
 
 ---
 
-## Design decisions worth knowing
+## Design
 
-**No framework.** The whole page is one HTML file, one stylesheet and one
-script. Total transfer is about 120 KB, most of it the two font files. A
-framework would have cost more than everything it replaced.
+**No framework.**
+The page is intentionally built from standard HTML, CSS, and JavaScript. There is no abstraction layer between the design and the browser.
 
-**Self-hosted fonts.** Geist and Geist Mono are subset to latin and
-latin-ext and served from the same origin, so there is no third-party request
-and no layout shift waiting on someone else's CDN.
+**Self-hosted fonts.**
+Geist and Geist Mono are served locally rather than loaded from a third-party CDN.
 
-**The lattice is batched, not just small.** The naive version issued one
-`beginPath()`/`stroke()` per link — roughly 2,000 canvas state changes per
-frame, which cost ~50 ms. Links are now bucketed by alpha and stroked as a
-handful of paths, with an adaptive quality governor that thins the field if a
-draw still exceeds its budget. Frame time dropped to a steady 16.7 ms
-(unthrottled *and* at 4× CPU throttling).
+**Interactive lattice.**
+The hero uses Canvas to create a responsive node field that reacts to pointer movement.
 
-**The custom cursor never appears on touch.** It is gated behind
-`(hover: hover) and (pointer: fine)`. The native cursor is untouched otherwise,
-so nothing is ever unclickable on a phone.
+**Custom cursor.**
+The cursor enhancement is only active for devices with a fine pointer and hover capability. Touch devices keep their native interaction model.
 
-**Reduced motion is a real path, not a stub.** `prefers-reduced-motion: reduce`
-freezes the caret, stops the lattice, shows all reveals immediately, and skips
-the smooth scroll. There is no content that is only reachable by animating.
+**Static by design.**
+There is no backend, database, analytics layer, or runtime dependency.
 
 ---
 
 ## Editing content
 
-All copy lives in `index.html`.
+Most copy lives directly in `index.html`.
 
-**Adding an interest:** copy a `<li class="stack__row">` block. If you want the
-hairline mark, add a key to `GLYPHS` in `assets/js/main.js` and point
-`data-glyph` at it.
+### Adding an interest
 
-**Wiring up the contact ports:** the three `<li class="port">` items in the
-Ports section. Each currently renders a placeholder with a dashed underline. To
-make one live, replace the contents of `.port__val` with a real link and drop
-the `data-placeholder` attribute:
+Copy an existing:
 
 ```html
-<p class="port__val">
-  <a href="https://github.com/YOUR-HANDLE" data-cursor-label="Open">github.com/YOUR-HANDLE</a>
-</p>
+<li class="stack__row">
 ```
 
-**Accent colour:** change `--accent` in `:root`. The canvases read it from CSS
-at startup, so the hero, the rail and the ending all follow automatically.
+block and update its number, title, description, and glyph.
+
+### Updating the ports
+
+The Ports section contains four live channels:
+
+* GitHub
+* WhatsApp
+* Email
+* Discord
+
+Each port is a full clickable card.
+
+### Changing the accent
+
+Change `--accent` in `assets/css/style.css`.
+
+The interactive elements use the same accent variable so the visual system remains consistent.
 
 ---
 
-## Before publishing
+## Deployment
 
-* [ ] Replace the three placeholders in the Ports section with real links
-* [ ] Set the absolute `og:url` and `og:image` in the `<head>` (they currently
-      use relative paths, which most platforms will not resolve)
-* [ ] Decide whether Cairo belongs in the site — it is currently absent, on
-      purpose, because it did not earn a place in the composition
-* [ ] Replace the Completed column in the Ledger once there is something
-      genuinely finished to put in it
+The site is designed to be deployed as a static site.
 
-Nothing on this site was invented. Where a fact was not supplied, it is either
-omitted or rendered as a visibly marked placeholder.
+It can be served directly by any static hosting provider, including Vercel.
+
+No build command is required.
+
+---
+
+## Philosophy
+
+The site deliberately avoids presenting unfinished work as finished work.
+
+The Ledger separates experiments from completed work, while the In Progress section shows what is currently being explored or built.
+
+The site is intended to evolve with the work rather than pretend the work is already complete.
